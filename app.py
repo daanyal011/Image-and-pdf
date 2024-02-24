@@ -117,11 +117,18 @@ def main():
         image_file = st.file_uploader("Upload a single image", type=["jpg", "jpeg", "png"])
         # submit = st.button("Process ✅")
         if image_file is not None and user_question and submit:
-            with st.spinner("Processing..."):
-                response = image_processing(image_file,user_question)
-                st.subheader("Response :")
-                st.write(response)
-            # Call your image processing code, e.g.,
+                with st.spinner("Processing..."):
+                    try:
+                        response = image_processing(image_file, user_question)
+                        st.subheader("Response :")
+                        st.write(response)
+                    except:
+                        st.error("Error: Image size exceeds 4MB!. Please try with a smaller image or consider compressing the image.")
+    # Additional error handling or alternative actions here    
+                # response = image_processing(image_file,user_question)
+                # st.subheader("Response :")
+                # st.write(response)
+            # # Call your image processing code, e.g.,
             # response = process_image(file, user_question) 
         else:
             st.error("Please upload an image")
