@@ -1,0 +1,5 @@
+streamlit
+PyPDF2
+langchain
+google-api-python-client  # Required for google.generativeai 
+faiss-cpu  # CPU version of FAISS (adjust if you have GPU support)
