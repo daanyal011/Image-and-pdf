@@ -3,7 +3,7 @@ from PyPDF2 import PdfReader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 import os
 
-# from langchain_google_genai import GoogleGenerativeAI
+
 import google.generativeai as genai
 from langchain_community.vectorstores import FAISS
 from langchain_google_genai import ChatGoogleGenerativeAI
@@ -111,11 +111,12 @@ def main():
     # pdf_files = st.file_uploader("Upload your PDF files", type="pdf", accept_multiple_files=True)
     # image_file = st.file_uploader("Upload a single image", type=["jpg", "jpeg", "png"])
     user_question = st.text_input("Ask your question:",key="input")
-
+    submit = st.button("Process ✅")
     # if (pdf_files or image_file) is not None and user_question:
     if content_type == "Image":
         image_file = st.file_uploader("Upload a single image", type=["jpg", "jpeg", "png"])
-        if image_file is not None and user_question:
+        # submit = st.button("Process ✅")
+        if image_file is not None and user_question and submit:
             with st.spinner("Processing..."):
                 response = image_processing(image_file,user_question)
                 st.subheader("Response :")
@@ -126,14 +127,25 @@ def main():
             st.error("Please upload an image")
     elif content_type == "PDF":
         pdf_files = st.file_uploader("Upload your PDF files", type="pdf", accept_multiple_files=True)
-        if pdf_files is not None and user_question:
+        # submit = st.button("Process ✅")
+        if pdf_files is not None and user_question and submit:
             with st.spinner("Processing..."):
-                raw_text = get_pdf_text(pdf_files)
-                text_chunks = get_text_chunks(raw_text)
-                get_vector_store(text_chunks)
-                response = pdf_processing(user_question)
-                st.subheader("Response :")
-                st.write(response)
+                # raw_text = get_pdf_text(pdf_files)
+                # text_chunks = get_text_chunks(raw_text)
+                # get_vector_store(text_chunks)
+                # response = pdf_processing(user_question)
+                try:
+                    raw_text = get_pdf_text(pdf_files)
+                    text_chunks = get_text_chunks(raw_text)
+                    get_vector_store(text_chunks)
+                    response = pdf_processing(user_question)
+                    st.subheader("Response :")
+                    st.write(response)
+                except:
+                    st.error("Upload a pdf")
+                
+                # st.subheader("Response :")
+                # st.write(response)
             # pass
         else:
             st.error("Please upload atleast a single pdf")
