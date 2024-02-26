@@ -2,6 +2,7 @@ import streamlit as st
 from PyPDF2 import PdfReader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 import os
+import io
 
 
 import google.generativeai as genai
@@ -29,19 +30,41 @@ def get_gemini_response(input,image,prompt):
 
 def input_image_details(uploaded_file):
     if uploaded_file is not None:
-        ## Read the file into bytes
         bytes_data = uploaded_file.getvalue()
-        
+        # Assuming the image will be JPEG or PNG (Modify if needed)
+        mime_type = "image/jpeg" 
+
         image_parts = [
             {
-                "mime_type" : uploaded_file.type, #get the mime type of the uploaded file
+                "mime_type" : mime_type,
                 "data" : bytes_data
             }
         ]
         return image_parts
     else:
         raise FileNotFoundError("No file uploaded")
+    
+def compress_image(image_file):  #handle in-memory image data
+    image = Image.open(io.BytesIO(image_file.getvalue()))
 
+    quality_start = 99
+    quality_step = 5
+    target_size = 4 * 1024 * 1024  # 4MB
+
+    while True:
+        output_buffer = io.BytesIO()
+        image.save(output_buffer, format="JPEG", optimize=True, quality=quality_start)
+        filesize = output_buffer.getbuffer().nbytes
+
+        if filesize <= target_size:
+            return output_buffer.getvalue()
+        else:
+            output_buffer.close()
+            quality_start -= quality_step
+
+            if quality_start < 0:  
+                return None 
+            
 def image_processing(uploaded_file,user_ques):
     image = Image.open(uploaded_file)
     st.image(image, caption="Uploaded Image.",use_column_width=True)
@@ -101,46 +124,42 @@ def pdf_processing(user_question):
         return_only_outputs=True)
     
     return response["output_text"]
-    # print(response)
-    # st.write("Answer : \n", response["output_text"])
     
 
 def main():
     st.title("Multi-Modal Question Answering System 💁")
     content_type = st.radio("Choose input type:", ["Image", "PDF"])
-    # pdf_files = st.file_uploader("Upload your PDF files", type="pdf", accept_multiple_files=True)
-    # image_file = st.file_uploader("Upload a single image", type=["jpg", "jpeg", "png"])
     user_question = st.text_input("Ask your question:",key="input")
     submit = st.button("Process ✅")
-    # if (pdf_files or image_file) is not None and user_question:
+    
     if content_type == "Image":
         image_file = st.file_uploader("Upload a single image", type=["jpg", "jpeg", "png"])
-        # submit = st.button("Process ✅")
         if image_file is not None and user_question and submit:
-                with st.spinner("Processing..."):
-                    try:
+            with st.spinner("Processing..."):
+                try:
+                    if image_file.size > (4 * 1024 * 1024):  
+                        compressed_image = compress_image(image_file)
+                        if compressed_image:
+                            response = image_processing(io.BytesIO(compressed_image), user_question) 
+                        else:
+                            st.error("Unable to compress image below 4MB")
+                    else:
                         response = image_processing(image_file, user_question)
-                        st.subheader("Response :")
-                        st.write(response)
-                    except:
-                        st.error("Error: Image size exceeds 4MB!. Please try with a smaller image or consider compressing the image.")
-    # Additional error handling or alternative actions here    
-                # response = image_processing(image_file,user_question)
-                # st.subheader("Response :")
-                # st.write(response)
-            # # Call your image processing code, e.g.,
-            # response = process_image(file, user_question) 
+
+                    st.subheader("Response :")
+                    st.write(response)
+
+                except Exception as e:  
+                    st.error(f"An error occurred: {e}")
         else:
             st.error("Please upload an image")
+
+    
     elif content_type == "PDF":
         pdf_files = st.file_uploader("Upload your PDF files", type="pdf", accept_multiple_files=True)
-        # submit = st.button("Process ✅")
+        
         if pdf_files is not None and user_question and submit:
             with st.spinner("Processing..."):
-                # raw_text = get_pdf_text(pdf_files)
-                # text_chunks = get_text_chunks(raw_text)
-                # get_vector_store(text_chunks)
-                # response = pdf_processing(user_question)
                 try:
                     raw_text = get_pdf_text(pdf_files)
                     text_chunks = get_text_chunks(raw_text)
@@ -150,19 +169,11 @@ def main():
                     st.write(response)
                 except:
                     st.error("Upload a pdf")
-                
-                # st.subheader("Response :")
-                # st.write(response)
-            # pass
         else:
             st.error("Please upload atleast a single pdf")
-            # Call your PDF processing code, e.g.,
-            # response = process_pdf(file, user_question) 
     else:
             st.error("Please select an input type and upload a file")
 
-    # st.subheader("Response :")
-    # st.write(response)
 
 if __name__ == "__main__":
     main()
